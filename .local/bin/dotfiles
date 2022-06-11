@@ -1,0 +1,91 @@
+#!/bin/env bash
+
+DOTFILES_DIR="${DOTFILES_DIR:-"$HOME/.local/dotfiles"}"
+DOTFILES_CMD="${DOTFILES_CMD:-"$DOTFILES_DIR/.local/bin/dotfiles"}"
+
+install() {
+    if [ $# -eq 1 ]; then
+        find $DOTFILES_DIR -type f -exec $DOTFILES_CMD install {} \;
+    else
+        for ((i=2; i<=$#; i++))
+        do
+            source="${!i}"
+            source=$(readlink -f $source)
+            name="${source/#$DOTFILES_DIR\//}"
+            target="${HOME}/${name}"
+
+            if [[ "${source}" != $DOTFILES_DIR/* ]]; then
+                echo "${source} is not inside dotfiles directory!"
+                exit 1
+            fi
+
+            mkdir -p $(dirname $target)
+            cp $source $target
+            echo "Installing ${name}"
+        done
+    fi
+}
+
+update() {
+    if [ $# -eq 1 ]; then
+        find $DOTFILES_DIR -type f ! -path $DOTFILES_DIR/install.sh ! -path $DOTFILES_DIR/update.sh ! -path $DOTFILES_DIR/setup.sh -exec $DOTFILES_DIR/update.sh {} \;
+        echo "Done updating files, you can commit changes now."
+    else
+        for ((i=2; i<=$#; i++))
+        do
+            path="${!i}"
+            path=$(readlink -f $path)
+
+            if [[ "${path}" != $HOME/* ]]; then
+                if [[ "${path}" != $DOTFILES_DIR/* ]]; then
+                    echo "${!i} is not inside home directory!"
+                    exit 1
+                fi
+            fi
+        done
+
+        for ((i=2; i<=$#; i++))
+        do
+            path=$(readlink -f ${!i})
+
+            if [[ "${path}" = $DOTFILES_DIR/* ]]; then
+                source="${path/#$DOTFILES_DIR/$HOME}"
+                target="${path}"
+            else
+                source="${path}"
+                target="${path/#$HOME/$DOTFILES_DIR}"
+            fi
+
+            if [[ -d "$source" ]]; then
+                echo "dir"
+                target="$(dirname $target)/"
+            fi
+
+            name="${source/#$HOME\//}"
+            echo "Updating $name"
+            mkdir -p $(dirname $target)
+            cp -r $source $target
+        done
+    fi
+}
+
+self-update() {
+    cp $DOTFILES_CMD $HOME/.local/bin/dotfiles
+    echo "Re-installed dotfiles script."
+}
+
+if [ "$1" = "install" ]; then
+    install "$@"
+elif [ "$1" = "update" ]; then
+    update "$@"
+elif [ "$1" = "self-update" ]; then
+    self-update "$@"
+elif [ "$1" = "pwd" ]; then
+    echo $DOTFILES_DIR
+elif [ "$1" = "init" ]; then
+    mkdir -p $DOTFILES_DIR
+    git clone git@github.com:ibrahimduran/dotfiles.git $DOTFILES_DIR
+    $DOTFILES_CMD install
+else
+    echo "Usage: dotfiles install|update|self-update|pwd|init"
+fi
