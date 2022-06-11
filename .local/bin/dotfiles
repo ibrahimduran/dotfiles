@@ -5,7 +5,7 @@ DOTFILES_CMD="${DOTFILES_CMD:-"$DOTFILES_DIR/.local/bin/dotfiles"}"
 
 install() {
     if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f -exec $DOTFILES_CMD install {} \;
+        find $DOTFILES_DIR -type f ! -path $DOTFILES_DIR/.git -exec $DOTFILES_CMD install {} \;
     else
         for ((i=2; i<=$#; i++))
         do
@@ -28,7 +28,7 @@ install() {
 
 update() {
     if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f ! -path $DOTFILES_DIR/install.sh ! -path $DOTFILES_DIR/update.sh ! -path $DOTFILES_DIR/setup.sh -exec $DOTFILES_DIR/update.sh {} \;
+        find $DOTFILES_DIR -type f ! -path $DOTFILES_DIR/.git -exec $DOTFILES_DIR/update.sh {} \;
         echo "Done updating files, you can commit changes now."
     else
         for ((i=2; i<=$#; i++))
@@ -72,6 +72,7 @@ update() {
 self-update() {
     cp $DOTFILES_CMD $HOME/.local/bin/dotfiles
     echo "Re-installed dotfiles script."
+    exit 0
 }
 
 if [ "$1" = "install" ]; then
@@ -86,6 +87,12 @@ elif [ "$1" = "init" ]; then
     mkdir -p $DOTFILES_DIR
     git clone git@github.com:ibrahimduran/dotfiles.git $DOTFILES_DIR
     $DOTFILES_CMD install
+elif [ "$1" = "diff" ]; then
+    git -C $DOTFILES_DIR diff
+elif [ "$1" = "push" ]; then
+    git -C $DOTFILES_DIR add $DOTFILES_DIR
+    git -C $DOTFILES_DIR commit -m "Update"
+    git -C $DOTFILES_DIR push origin master
 else
-    echo "Usage: dotfiles install|update|self-update|pwd|init"
+    echo "Usage: dotfiles install|update|self-update|pwd|init|diff|push"
 fi
