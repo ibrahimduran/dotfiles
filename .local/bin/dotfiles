@@ -30,7 +30,7 @@ install() {
 
 update() {
     if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_DIR/update.sh {} \;
+        find $DOTFILES_DIR -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_CMD update {} \;
         echo "Done updating files, you can commit changes now."
     else
         for ((i=2; i<=$#; i++))
@@ -97,15 +97,15 @@ else
         exit 0
     fi
 
-    while true; do
-        msg="This will clone and install dotfiles into \"${DOTFILES_DIR}\", do you wish to continue? "
-        read -p "$msg" -n 1 yn
-        case $yn in
-            [Yy]* ) echo ""; echo "Installing dotfiles..."; break;;
-            [Nn]* ) echo ""; exit;;
-            * ) echo $msg;;
-        esac
-    done
+    # while true; do
+    #     msg="This will clone and install dotfiles into \"${DOTFILES_DIR}\", do you wish to continue? "
+    #     read -p "$msg" -n 1 yn
+    #     case $yn in
+    #         [Yy]* ) echo ""; echo "Installing dotfiles..."; break;;
+    #         [Nn]* ) echo ""; exit;;
+    #         * ) echo $msg;;
+    #     esac
+    # done
 
     mkdir -p $(dirname $DOTFILES_DIR)
 
