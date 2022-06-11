@@ -1,11 +1,13 @@
 #!/bin/env bash
 
+set -e
+
 DOTFILES_DIR="${DOTFILES_DIR:-"$HOME/.local/dotfiles"}"
 DOTFILES_CMD="${DOTFILES_CMD:-"$DOTFILES_DIR/.local/bin/dotfiles"}"
 
 install() {
     if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f ! -path $DOTFILES_DIR/.git -exec $DOTFILES_CMD install {} \;
+        find $DOTFILES_DIR -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_CMD install {} \;
     else
         for ((i=2; i<=$#; i++))
         do
@@ -28,7 +30,7 @@ install() {
 
 update() {
     if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f ! -path $DOTFILES_DIR/.git -exec $DOTFILES_DIR/update.sh {} \;
+        find $DOTFILES_DIR -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_DIR/update.sh {} \;
         echo "Done updating files, you can commit changes now."
     else
         for ((i=2; i<=$#; i++))
@@ -83,10 +85,6 @@ elif [ "$1" = "self-update" ]; then
     self-update "$@"
 elif [ "$1" = "pwd" ]; then
     echo $DOTFILES_DIR
-elif [ "$1" = "init" ]; then
-    mkdir -p $DOTFILES_DIR
-    git clone git@github.com:ibrahimduran/dotfiles.git $DOTFILES_DIR
-    $DOTFILES_CMD install
 elif [ "$1" = "diff" ]; then
     git -C $DOTFILES_DIR diff
 elif [ "$1" = "push" ]; then
@@ -94,5 +92,28 @@ elif [ "$1" = "push" ]; then
     git -C $DOTFILES_DIR commit -m "Update"
     git -C $DOTFILES_DIR push origin master
 else
-    echo "Usage: dotfiles install|update|self-update|pwd|init|diff|push"
+    if [ -d "$DOTFILES_DIR" ]; then
+        echo "Usage: dotfiles install|update|self-update|pwd|diff|push"
+        exit 0
+    fi
+
+    while true; do
+        msg="This will clone and install dotfiles into \"${DOTFILES_DIR}\", do you wish to continue? "
+        read -p "$msg" -n 1 yn
+        case $yn in
+            [Yy]* ) echo ""; echo "Installing dotfiles..."; break;;
+            [Nn]* ) echo ""; exit;;
+            * ) echo $msg;;
+        esac
+    done
+
+    mkdir -p $(dirname $DOTFILES_DIR)
+
+    if [ "${DOTFILES_CLONE:-"ssh"}" = "ssh" ]; then
+        git clone git@github.com:ibrahimduran/dotfiles.git $DOTFILES_DIR
+    else
+        git clone https://github.com/ibrahimduran/dotfiles.git $DOTFILES_DIR
+    fi
+
+    $DOTFILES_CMD install
 fi
