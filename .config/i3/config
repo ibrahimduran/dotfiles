@@ -39,9 +39,6 @@ for_window [class="^.*"] border pixel 0
 
 for_window [class="Conky"] floating enable
 
-gaps outer 0
-gaps inner 15
-
 # Use pactl to adjust volume in PulseAudio.
 set $refresh_i3status killall -SIGUSR1 i3status
 bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status

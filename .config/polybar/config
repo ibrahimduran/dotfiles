@@ -44,12 +44,12 @@ offset-y = 0
 
 [section/base]
 height = 24pt
-radius = 6
+radius = 0
 background = ${colors.background}
 foreground = ${colors.foreground}
 line-size = 3pt
 ; border-size = 0
-border-size = 10pt
+border-size = 0
 border-bottom = 0
 offset-y = 13
 ; override-redirect = true

@@ -3,113 +3,129 @@
 set -e
 
 DOTFILES_DIR="${DOTFILES_DIR:-"$HOME/.local/dotfiles"}"
-DOTFILES_CMD="${DOTFILES_CMD:-"$DOTFILES_DIR/.local/bin/dotfiles"}"
+DOTFILES_CMD=$(readlink -f $0)
 
 install() {
-    if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_CMD install {} \;
+    if [ $# -eq 0 ]; then
+        install $DOTFILES_DIR
     else
-        for ((i=2; i<=$#; i++))
+        for ((i=1; i<=$#; i++))
         do
             source="${!i}"
             source=$(readlink -f $source)
-            name="${source/#$DOTFILES_DIR\//}"
-            target="${HOME}/${name}"
 
-            if [[ "${source}" != $DOTFILES_DIR/* ]]; then
+            if [[ "${source}" != $DOTFILES_DIR && "${source}" != $DOTFILES_DIR/* ]]; then
                 echo "${source} is not inside dotfiles directory!"
                 exit 1
             fi
 
-            mkdir -p $(dirname $target)
-            cp $source $target
-            echo "Installing ${name}"
-        done
-    fi
-}
+            if [[ -d "$source" ]]; then
+                find $source -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_CMD install {} \;
+            else
+                name="${source/#$DOTFILES_DIR\//}"
+                target="${HOME}/${name}"
+                current=$(readlink -f $target)
 
-update() {
-    if [ $# -eq 1 ]; then
-        find $DOTFILES_DIR -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_CMD update {} \;
-        echo "Done updating files, you can commit changes now."
-    else
-        for ((i=2; i<=$#; i++))
-        do
-            path="${!i}"
-            path=$(readlink -f $path)
-
-            if [[ "${path}" != $HOME/* ]]; then
-                if [[ "${path}" != $DOTFILES_DIR/* ]]; then
-                    echo "${!i} is not inside home directory!"
-                    exit 1
+                # file already exists
+                if [[ -e $target ]]; then
+                    # file is a link
+                    if [[ $current != $target ]]; then
+                        # link is not correct
+                        if [[ $current != $source ]]; then
+                            echo "[Error] Link to different target already exists $target"
+                        fi
+                    else
+                        echo "[Error] File already exists $target"
+                    fi
+                else
+                    ln -s $source $target
+                    echo "Linked $name"
                 fi
             fi
         done
+    fi
+}
 
-        for ((i=2; i<=$#; i++))
+uninstall() {
+    if [ $# -eq 0 ]; then
+        uninstall $DOTFILES_DIR
+    else
+        for ((i=1; i<=$#; i++))
         do
-            path=$(readlink -f ${!i})
+            source="${!i}"
+            source=$(readlink -f $source)
 
-            if [[ "${path}" = $DOTFILES_DIR/* ]]; then
-                source="${path/#$DOTFILES_DIR/$HOME}"
-                target="${path}"
-            else
-                source="${path}"
-                target="${path/#$HOME/$DOTFILES_DIR}"
+            if [[ "${source}" != $DOTFILES_DIR && "${source}" != $DOTFILES_DIR/* ]]; then
+                echo "${source} is not inside dotfiles directory!"
+                exit 1
             fi
 
             if [[ -d "$source" ]]; then
-                echo "dir"
-                target="$(dirname $target)/"
-            fi
+                find $source -type f -not -path "$DOTFILES_DIR/.git*" -exec $DOTFILES_CMD uninstall {} \;
+            else
+                name="${source/#$DOTFILES_DIR\//}"
+                target="${HOME}/${name}"
+                current=$(readlink -f $target)
 
-            name="${source/#$HOME\//}"
-            echo "Updating $name"
-            mkdir -p $(dirname $target)
-            cp -r $source $target
+                # file already exists
+                if [[ -e $target ]]; then
+                    # file is a link
+                    if [[ $current != $target ]]; then
+                        # link is not correct
+                        if [[ $current != $source ]]; then
+                            echo "[Error] Link to different target already exists $target"
+                        else
+                            unlink $target
+                            echo "Unlinked $name"
+                        fi
+                    else
+                        echo "[Error] File is not a link $target"
+                    fi
+                fi
+            fi
         done
     fi
 }
 
-self-update() {
-    cp $DOTFILES_CMD $HOME/.local/bin/dotfiles
-    echo "Re-installed dotfiles script."
-    exit 0
-}
-
 if [ "$1" = "install" ]; then
-    install "$@"
-elif [ "$1" = "update" ]; then
-    update "$@"
-elif [ "$1" = "self-update" ]; then
-    self-update "$@"
+    install "${@:2}"
+elif [ "$1" = "uninstall" ]; then
+    uninstall "${@:2}"
 elif [ "$1" = "pwd" ]; then
     echo $DOTFILES_DIR
 elif [ "$1" = "diff" ]; then
-    git -C $DOTFILES_DIR diff
+    git -C $DOTFILES_DIR add $DOTFILES_DIR
+    git -C $DOTFILES_DIR diff --cached "${@:2}"
 elif [ "$1" = "push" ]; then
     git -C $DOTFILES_DIR add $DOTFILES_DIR
-    git -C $DOTFILES_DIR commit -m "Update"
-    git -C $DOTFILES_DIR push origin master
+    git diff --cached --quiet && echo "No changes found." || {
+        git -C $DOTFILES_DIR commit -m "Update"
+        git -C $DOTFILES_DIR push origin master
+    }
 else
     if [ -d "$DOTFILES_DIR" ]; then
-        echo "Usage: dotfiles install|update|self-update|pwd|diff|push"
+        echo "Usage: dotfiles install|uninstall|pwd|diff|push"
         exit 0
     fi
 
-    # while true; do
-    #     msg="This will clone and install dotfiles into \"${DOTFILES_DIR}\", do you wish to continue? "
-    #     read -p "$msg" -n 1 yn
-    #     case $yn in
-    #         [Yy]* ) echo ""; echo "Installing dotfiles..."; break;;
-    #         [Nn]* ) echo ""; exit;;
-    #         * ) echo $msg;;
-    #     esac
-    # done
+    tty -s && {
+        while true; do
+            msg="This will clone and install dotfiles into \"${DOTFILES_DIR}\", do you wish to continue? "
+            read -p "$msg" -n 1 yn
+            case $yn in
+                [Yy]* ) echo ""; echo "Installing dotfiles..."; break;;
+                [Nn]* ) echo ""; exit;;
+                * ) echo $msg;;
+            esac
+        done
+    } || {
+        echo "Installing dotfiles..."
+        sleep 3
+    }
 
     mkdir -p $(dirname $DOTFILES_DIR)
 
-    if [ "${DOTFILES_CLONE:-"ssh"}" = "ssh" ]; then
+    if [ "${GIT_USE_HTTP:-"0"}" = "0" ]; then
         git clone git@github.com:ibrahimduran/dotfiles.git $DOTFILES_DIR
     else
         git clone https://github.com/ibrahimduran/dotfiles.git $DOTFILES_DIR
