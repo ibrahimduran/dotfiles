@@ -66,7 +66,7 @@ width = 100%
 ; width = 98.6%
 offset-x = 13
 modules-left = xworkspaces xwindow
-modules-right = filesystem xkeyboard memory cpu wlan eth pulseaudio date
+modules-right = filesystem xkeyboard memory cpu wlan eth pulseaudio battery date
 padding-right = 1
 separator = |
 separator-foreground = ${colors.disabled}
@@ -187,6 +187,12 @@ interval = 5
 format-connected = <label-connected>
 format-disconnected = <label-disconnected>
 label-disconnected = %{F#F0C674}%ifname%%{F#707880} disconnected
+
+[module/battery]
+type = internal/battery
+battery = BAT1
+adapter = ADP1
+poll-interval = 5
 
 [module/wlan]
 inherit = network-base

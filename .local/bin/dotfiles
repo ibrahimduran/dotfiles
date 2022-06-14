@@ -24,7 +24,18 @@ install() {
             else
                 name="${source/#$DOTFILES_DIR\//}"
                 target="${HOME}/${name}"
-                current=$(readlink -f $target)
+                
+		if [[ -f $target ]]; then
+			current=$(readlink -f $target)
+		else
+			current=$target
+		fi
+
+		dirname=$(dirname "$target")
+
+		if [[ ! -d $dirname ]]; then
+			mkdir -p $dirname
+		fi
 
                 # file already exists
                 if [[ -e $target ]]; then
